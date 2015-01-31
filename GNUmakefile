@@ -40,7 +40,7 @@
 VERSION_MAJOR = 3
 VERSION_MINOR = 0
 VERSION_POINT = 23
-CODE_STATUS   = UNRELEASED
+CODE_STATUS   = K_MODIFY_1
 VERSION       = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_POINT)
 SNAPVERSION   = $(VERSION)-$(shell date "+%Y%m%d")
 
@@ -103,6 +103,7 @@ INSTALL_R  = -m $(RWD_MODE)
 # Build tools
 #############################################################################
 
+#PROGRAM    = privoxy_test.exe
 PROGRAM    = privoxy.exe
 CC         = gcc
 ECHO       = echo
@@ -195,7 +196,7 @@ W32_FILES = w32.res
 W32_OBJS  = $(W32_SRC:.c=.o) $(W32_FILES)
 W32_HDRS  = w32log.h w32taskbar.h win32.h w32res.h w32svrapi.h
 W32_LIB   = -lwsock32 -lcomctl32
-W32_INIS  = config.txt trust.txt
+#W32_INIS  = config.txt trust.txt
 
 PCRS_SRC     = pcrs.c
 PCRS_OBJS    = $(PCRS_SRC:.c=.o)
@@ -282,16 +283,16 @@ default.action: default.action.master
 
 inifiles: $(W32_INIS)
 
-config.txt: config
-	$(SED) -e 's!\trustfile trust!trustfile trust.txt!' \
-	       -e 's!\logfile logfile!logfile privoxy.log!' \
-	       -e 's!#Win32-only: !!' \
-	       < $< | \
-	       $(DOSFILTER) > $@
-	# LF to CRLF in default.action
-	$(DOSFILTER) <default.action >default.action.txt && mv default.action.txt default.action
-	# LF to CRLF in default.filter
-	$(DOSFILTER) <default.filter >default.filter.txt && mv default.filter.txt default.filter
+#config.txt: config
+#	$(SED) -e 's!\trustfile trust!trustfile trust.txt!' \
+#	       -e 's!\logfile logfile!logfile privoxy.log!' \
+#	       -e 's!#Win32-only: !!' \
+#	       < $< | \
+#	       $(DOSFILTER) > $@
+#	# LF to CRLF in default.action
+#	$(DOSFILTER) <default.action >default.action.txt && mv default.action.txt default.action
+#	# LF to CRLF in default.filter
+#	$(DOSFILTER) <default.filter >default.filter.txt && mv default.filter.txt default.filter
 
 trust.txt: trust
 	$(DOSFILTER) < $< > $@
@@ -472,8 +473,8 @@ man: dok-release
 	mkdir -p doc/source/temp && cd doc/source/temp && $(RM) * ;\
 	nsgmls ../privoxy-man-page.sgml  | sgmlspl ../../../utils/docbook2man/docbook2man-spec.pl &&\
 	perl -pi.bak -e 's/ <URL:.*>//; s/\[ /\[/g' $(MAN_PAGE) ;\
-	perl -pi.bak -e "s/\[ /\[/g;s/·/\\\\['a]/g;s/È/\\\\['e]/g" $(MAN_PAGE); \
-	perl -pi.bak -e "s/ˆ/\\\\[:o]/g" $(MAN_PAGE); \
+	perl -pi.bak -e "s/\[ /\[/g;s/ÅE\\\\['a]/g;s/ÅE\\\\['e]/g" $(MAN_PAGE); \
+	perl -pi.bak -e "s/ÅE\\\\[:o]/g" $(MAN_PAGE); \
 	perl -pi.bak -e 's/([ {])-([a-z])/$$1\\-$$2/g' $(MAN_PAGE); \
 	perl -pi.bak -e 's/ --([a-z])/ \\-\\-$$1/g' $(MAN_PAGE); \
 	perl -pi.bak -e 's/\\fB--/\\fB\\-\\-/g' $(MAN_PAGE); \

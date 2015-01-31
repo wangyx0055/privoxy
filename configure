@@ -3206,7 +3206,7 @@ if test $ac_compiler_gnu = yes; then
 else
   GCC=
 fi
-ac_test_	S=${CFLAGS+set}
+ac_test_CFLAGS=${CFLAGS+set}
 ac_save_CFLAGS=$CFLAGS
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $CC accepts -g" >&5
 $as_echo_n "checking whether $CC accepts -g... " >&6; }
@@ -4007,8 +4007,7 @@ fi
 if test $target_type = mingw; then
   WIN_ONLY=
   CFLAGS="$CFLAGS -DWINVER=0x501"
-  #SPECIAL_CFLAGS="-mwindows -mno-cygwin"
-  SPECIAL_FLAG="-mwindows -mmovbe -msse4.2 -march=core2 -mtune=core2 -mcx16"
+  SPECIAL_CFLAGS="-mwindows -mmovbe -msse4.2 -march=core2 -mtune=core2 -mcx16"
   PTHREAD_LIB=-lpthreadGC
   echo "Using mingw32 (Win32 GUI)"
 else
