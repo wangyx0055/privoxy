@@ -1,0 +1,32 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 05_default_action.dpatch by Roland Rosenfeld <roland@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Serveral changes/additons to default.action.
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' privoxy~/default.action.master privoxy/default.action.master
+--- privoxy~/default.action.master
++++ privoxy/default.action.master
+@@ -2259,6 +2259,9 @@
+ #MASTER# REMARKS: Exclude per Debian bug report #377843
+ # URL = http://blogs.msdn.com/wga/archive/2006/07/16/667063.aspx
+ blogs.msdn.com
++#MASTER# REMARKS: Exclude per Debian bug report #441256
++#MASTER# PROBLEM-URL: http://www.memo.de/
++www.memo.de
+ 
+ {-filter{unsolicited-popups}}
+ # Sticky Actions = -filter{unsolicited-popups}
+@@ -2312,6 +2315,11 @@
+ {+filter{tiny-textforms}}
+ .sourceforge.net/tracker
+ 
++{-filter{ie-exploits}}
++#MASTER# REMARKS: Allow %01 and %02 in URLs as they are used in Amazon's 
++#MASTER# REMARKS: multi-page results see http://bugs.debian.org/243245
++.amazon.de
++
+ {+downgrade-http-version}
+ #MASTER# COMMENTS: This section not checked 10/17/06 HB
+ #MASTER# REMARKS: This is work-around for CUPS http configuration.
