@@ -838,6 +838,30 @@ jb_err cgi_show_version(struct client_state *csp,
    return template_fill_for_cgi(csp, "show-version", exports, rsp);
 }
 
+jb_err cgi_proxy_pac(struct client_state *csp,
+                        struct http_response *rsp,
+                        const struct map *parameters)
+{
+   struct map *exports;
+
+   assert(csp);
+   assert(rsp);
+   assert(parameters);
+
+   if (NULL == (exports = default_exports(csp, "proxy.pac")))
+   {
+      return JB_ERR_MEMORY;
+   }
+#if 0
+   if (map(exports, "proxy.pac", 1, show_rcs(), 0))
+   {
+      free_map(exports);
+      return JB_ERR_MEMORY;
+   }
+#endif /* 0 */
+   return template_fill_for_cgi(csp, "proxy.pac", exports, rsp);
+}
+
 
 /*********************************************************************
  *

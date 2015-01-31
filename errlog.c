@@ -779,6 +779,14 @@ void log_error(int loglevel, const char *fmt, ...)
             ival = va_arg(ap, int);
             snprintf(tempbuf, sizeof(tempbuf), "%d", ival);
             break;
+         case 'x':
+            ival = va_arg(ap, int);
+            snprintf(tempbuf, sizeof(tempbuf), "%x", ival);
+            break;
+         case 'p':
+            ival = va_arg(ap, int);
+            snprintf(tempbuf, sizeof(tempbuf), "%p", (void *)ival);
+            break;
          case 'u':
             uval = va_arg(ap, unsigned);
             snprintf(tempbuf, sizeof(tempbuf), "%u", uval);

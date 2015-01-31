@@ -206,6 +206,9 @@ static const struct cgi_dispatcher cgi_dispatchers[] = {
    { "user-manual",
           cgi_send_user_manual,
           NULL, TRUE /* Send user-manual */ },
+   { "proxy.pac",
+          cgi_proxy_pac,
+          NULL, TRUE  },
    { NULL, /* NULL Indicates end of list and default page */
          cgi_error_404,
          NULL, TRUE /* Unknown CGI page */ }
@@ -304,7 +307,7 @@ struct http_response *dispatch_cgi(struct client_state *csp)
 {
    const char *host = csp->http->host;
    const char *path = csp->http->path;
-
+   //log_error(LOG_LEVEL_ERROR, "dispatch_cgi , host=%s , path = %s ,path = %p, gpc = %s",host,path,path,csp->http->gpc);
    /*
     * Should we intercept ?
     */
@@ -340,9 +343,37 @@ struct http_response *dispatch_cgi(struct client_state *csp)
          return NULL;
       }
    }
+   /* listening host */
+   else if ( 0 == strcmpic(host, csp->config->haddr[0]) )
+   {
+      /* take everything following CGI_SITE_2_PATH */
+	   //log_error(LOG_LEVEL_ERROR, "mached! %s",PROXY_ADDR_HOST);
+      //path += strlen(PROXY_ADDR_HOST);
+      //log_error(LOG_LEVEL_ERROR, "host=%s , path[] = %s , path = %x",host,path,path);
+      if (*path == '/')
+      {
+         /* skip the forward slash after CGI_SITE_2_PATH */
+         path++;
+      }
+#if 0
+      else if (*path != '\0')
+      {
+         /*
+          * weirdness: URL is /configXXX, where XXX is some string
+          * Do *NOT* intercept.
+          */
+
+          log_error(LOG_LEVEL_ERROR,
+             "return!!(%s,%d) ", __FUNCTION__,__LINE__);
+         return NULL;
+      }
+#endif /* 0*/
+   }
    else
    {
       /* Not a CGI */
+      // log_error(LOG_LEVEL_ERROR,
+      //    "return!!(%s,%d)", __FUNCTION__,__LINE__);
       return NULL;
    }
 
@@ -482,7 +513,8 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
    char *query_args_start;
    char *path_copy;
    jb_err err;
-
+   //log_error(LOG_LEVEL_ERROR,
+   //   "Reach!! (%s,%d)",__FUNCTION__,__LINE__);
    if (NULL == (path_copy = strdup(path)))
    {
       return cgi_error_memory();
@@ -521,7 +553,8 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
     * path_copy        = CGI call name
     * param_list       = CGI params, as map
     */
-
+   //log_error(LOG_LEVEL_ERROR,
+   //   "Reach!! path==%s (%s,%d)",path,__FUNCTION__,__LINE__);
    /* Get mem for response or fail*/
    if (NULL == (rsp = alloc_http_response()))
    {
@@ -529,7 +562,8 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
       free_map(param_list);
       return cgi_error_memory();
    }
-
+   //log_error(LOG_LEVEL_ERROR,
+   //   "Reach!! (%s,%d)",__FUNCTION__,__LINE__);
    /*
     * Find and start the right CGI function
     */
@@ -538,10 +572,13 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
    {
       if ((d->name == NULL) || (strcmp(path_copy, d->name) == 0))
       {
+          //log_error(LOG_LEVEL_ERROR,
+          //   "Mached!!%s (%s,%d)", d->name,__FUNCTION__,__LINE__);
          /*
           * If the called CGI is either harmless, or referred
           * from a trusted source, start it.
           */
+
          if (d->harmless || referrer_is_safe(csp))
          {
             err = (d->handler)(csp, rsp, param_list);
@@ -561,6 +598,8 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
             {
                err = cgi_error_disabled(csp, rsp);
             }
+            //log_error(LOG_LEVEL_ERROR,
+            //   "Reach!! (%s,%d)",__FUNCTION__,__LINE__);
          }
 
          free(path_copy);
@@ -582,11 +621,15 @@ static struct http_response *dispatch_known_cgi(struct client_state * csp,
          {
             /* It worked */
             rsp->crunch_reason = CGI_CALL;
+            //log_error(LOG_LEVEL_ERROR,
+            //   "Reach!! (%s,%d)",__FUNCTION__,__LINE__);
             return finish_http_response(csp, rsp);
          }
          else
          {
             /* Error in handler, probably out-of-memory */
+            // log_error(LOG_LEVEL_ERROR,
+            //    "Reach!! (%s,%d)",__FUNCTION__,__LINE__);
             free_http_response(rsp);
             return cgi_error_memory();
          }

@@ -86,7 +86,9 @@ extern jb_err cgi_send_url_info_osd(struct client_state *csp,
 extern jb_err cgi_send_user_manual(struct client_state *csp,
                                    struct http_response *rsp,
                                    const struct map *parameters);
-
+extern jb_err cgi_proxy_pac(struct client_state *csp,
+        struct http_response *rsp,
+        const struct map *parameters);
 
 #ifdef FEATURE_GRACEFUL_TERMINATION
 extern jb_err cgi_die (struct client_state *csp,

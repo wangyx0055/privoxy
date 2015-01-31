@@ -181,6 +181,7 @@ static int32 server_thread(void *data);
 privoxy_mutex_t log_mutex;
 privoxy_mutex_t log_init_mutex;
 privoxy_mutex_t connection_reuse_mutex;
+privoxy_mutex_t config_mutex;
 
 #ifdef FEATURE_EXTERNAL_FILTERS
 privoxy_mutex_t external_filter_mutex;
@@ -1281,6 +1282,8 @@ static char *get_request_line(struct client_state *csp)
 
    do
    {
+      if(csp->config == NULL)
+        return NULL;
       if (!data_is_available(csp->cfd, csp->config->socket_timeout))
       {
          if (socket_is_still_alive(csp->cfd))
@@ -3017,7 +3020,35 @@ static void serve(struct client_state *csp)
    csp->flags &= ~CSP_FLAG_ACTIVE;
 
 }
+#define TH_NUM  32
+static struct {
+  HANDLE hMutex;
+  HANDLE hEvent;
+  struct client_state *csp;
+  int id;
+}th_ctx[TH_NUM];
 
+static void serve_loop(void *arg)
+{
+	int id;
+	id  = (int)arg;
+	log_error(LOG_LEVEL_INFO, "server_loop %d begin",id);
+	int cont = 1;
+	do{
+		WaitForSingleObject(th_ctx[id].hEvent, INFINITE);
+		WaitForSingleObject(th_ctx[id].hMutex, INFINITE);
+		log_error(LOG_LEVEL_INFO, "server_loop %d wake",id);
+		if(th_ctx[id].csp == NULL)
+			cont = 0;
+		else
+		{
+			assert(th_ctx[id].csp->config);
+			serve(th_ctx[id].csp);
+		}
+		log_error(LOG_LEVEL_INFO, "server_loop %d sleep",id);
+		ReleaseMutex(th_ctx[id].hMutex);
+	}while(cont != 0);
+}
 
 #ifdef __BEOS__
 /*********************************************************************
@@ -3184,6 +3215,7 @@ static void initialize_mutexes(void)
    privoxy_mutex_init(&log_mutex);
    privoxy_mutex_init(&log_init_mutex);
    privoxy_mutex_init(&connection_reuse_mutex);
+   privoxy_mutex_init(&config_mutex);
 #ifdef FEATURE_EXTERNAL_FILTERS
    privoxy_mutex_init(&external_filter_mutex);
 #endif
@@ -3490,7 +3522,9 @@ int main(int argc, char **argv)
 
    if (do_config_test)
    {
+	  privoxy_mutex_lock(&config_mutex);
       exit(NULL == load_config());
+      privoxy_mutex_unlock(&config_mutex);
    }
 
    /* Initialize the CGI subsystem */
@@ -3843,6 +3877,7 @@ void w32_service_listen_loop(void *p)
 }
 #endif /* def _WIN32 */
 
+#define WIN_THREAD_TYPE 1
 
 /*********************************************************************
  *
@@ -3862,8 +3897,11 @@ static void listen_loop(void)
    jb_socket bfds[MAX_LISTENING_SOCKETS];
    struct configuration_spec *config;
    unsigned int active_threads = 0;
+   int i = 0,t;
 
+   privoxy_mutex_lock(&config_mutex);
    config = load_config();
+   privoxy_mutex_unlock(&config_mutex);
 
 #ifdef FEATURE_CONNECTION_SHARING
    /*
@@ -3874,6 +3912,22 @@ static void listen_loop(void)
 #endif /* def FEATURE_CONNECTION_SHARING */
 
    bind_ports_helper(config, bfds);
+
+#if defined(_WIN32) && !defined(_CYGWIN) && !defined(SELECTED_ONE_OPTION)
+#if WIN_THREAD_TYPE==1
+#define SELECTED_ONE_OPTION
+	for(i=0 ; i < TH_NUM ; i++)
+	{
+	  th_ctx[i].csp = NULL;
+	  th_ctx[i].hMutex=CreateMutex(NULL,TRUE,NULL);
+	  th_ctx[i].hEvent=CreateEvent(NULL,FALSE,FALSE,NULL);
+      th_ctx[i].id = _beginthread(
+         (void (*)(void *))serve_loop,
+         128 * 1024,
+         i);
+	}
+#endif /*WIN_THREAD_TYPE==1*/
+#endif defined(_WIN32) && !defined(_CYGWIN) && !defined(SELECTED_ONE_OPTION)
 
 #ifdef FEATURE_GRACEFUL_TERMINATION
    while (!g_terminate)
@@ -3887,12 +3941,12 @@ static void listen_loop(void)
          /* zombie children */
       }
 #endif /* !defined(FEATURE_PTHREAD) && !defined(_WIN32) && !defined(__BEOS__) && !defined(AMIGA) */
-
+      int child_id = -1;
       /*
        * Free data that was used by died threads
        */
       active_threads = sweep();
-
+      log_error(LOG_LEVEL_INFO, "active_threads %d",active_threads);
 #if defined(unix)
       /*
        * Re-open the errlog after HUP signal
@@ -3935,8 +3989,10 @@ static void listen_loop(void)
       csp->flags |= CSP_FLAG_ACTIVE;
       csp->server_connection.sfd = JB_INVALID_SOCKET;
 
+      privoxy_mutex_lock(&config_mutex);
       csp->config = config = load_config();
-
+      privoxy_mutex_unlock(&config_mutex);
+      assert(csp->config);
       if (config->need_bind)
       {
          /*
@@ -3981,7 +4037,6 @@ static void listen_loop(void)
          continue;
       }
 #endif /* def FEATURE_ACL */
-
       if ((0 != config->max_client_connections)
          && (active_threads >= config->max_client_connections))
       {
@@ -4002,7 +4057,6 @@ static void listen_loop(void)
 
       if (config->multi_threaded)
       {
-         int child_id;
 
 /* this is a switch () statement in the C preprocessor - ugh */
 #undef SELECTED_ONE_OPTION
@@ -4025,10 +4079,38 @@ static void listen_loop(void)
 
 #if defined(_WIN32) && !defined(_CYGWIN) && !defined(SELECTED_ONE_OPTION)
 #define SELECTED_ONE_OPTION
-         child_id = _beginthread(
-            (void (*)(void *))serve,
-            64 * 1024,
-            csp);
+#if WIN_THREAD_TYPE==1
+        int count;
+#define RETRY_MAX 1
+      	for(count = 0 ; count < RETRY_MAX ; count++)
+      	{
+      		for(t=0 ; t < TH_NUM; t ++)
+      		{
+      			i = (i + 1) % TH_NUM;
+      			if(th_ctx[i].csp == NULL)
+      				goto out_ok;
+      			if(WaitForSingleObject(th_ctx[i].hMutex,0) != WAIT_TIMEOUT)
+      				goto out_ok;
+      		}
+      		log_error(LOG_LEVEL_ERROR,
+      		   "Thread Busy %d times",count+1);
+      		if(count == RETRY_MAX-1)
+      			goto  out_ng;
+      		Sleep(2000);
+      	}
+      out_ok:
+         th_ctx[i].csp = csp;
+         child_id = th_ctx[i].id;
+         log_error(LOG_LEVEL_INFO,"MainThWake %d",i);
+         ReleaseMutex(th_ctx[i].hMutex);
+         SetEvent(th_ctx[i].hEvent);
+
+#else
+      child_id = _beginthread(
+         (void (*)(void *))serve,
+         64 * 1024,
+         csp);
+#endif /* #if WIN_THREAD_TYPE */
 #endif
 
 #if defined(__OS2__) && !defined(SELECTED_ONE_OPTION)
@@ -4161,7 +4243,7 @@ static void listen_loop(void)
 
 #undef SELECTED_ONE_OPTION
 /* end of cpp switch () */
-
+         out_ng:
          if (child_id < 0)
          {
             /*

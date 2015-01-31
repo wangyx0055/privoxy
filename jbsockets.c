@@ -681,6 +681,7 @@ int data_is_available(jb_socket fd, int seconds_to_wait)
    fd_set rfds;
    struct timeval timeout;
    int n;
+   int r;
 
    memset(&timeout, 0, sizeof(timeout));
    timeout.tv_sec = seconds_to_wait;
@@ -694,11 +695,21 @@ int data_is_available(jb_socket fd, int seconds_to_wait)
    FD_SET(fd, &rfds);
 
    n = select(fd+1, &rfds, NULL, NULL, &timeout);
+   if(n!=1)
+       log_error(LOG_LEVEL_CONNECT,
+          "cannot select , select = %d ,time = %d , socket %d", n,seconds_to_wait, fd);
+
+   r = recv(fd, buf, 1, MSG_PEEK);
+
+   if(r!=1)
+       log_error(LOG_LEVEL_CONNECT,
+          "cannot peek , recv = %d (%E), socket %d", r, fd);
 
    /*
     * XXX: Do we care about the different error conditions?
     */
-   return ((n == 1) && (1 == recv(fd, buf, 1, MSG_PEEK)));
+
+   return ((n == 1) && (1 == r));
 }
 
 
