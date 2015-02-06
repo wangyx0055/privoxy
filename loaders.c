@@ -275,9 +275,12 @@ int check_file_changed(const struct file_list * current,
 
    *newfl = NULL;
 
+
+
    if (stat(filename, statbuf) < 0)
    {
       /* Error, probably file not found. */
+		  assert(0);
       return 1;
    }
 
@@ -292,6 +295,7 @@ int check_file_changed(const struct file_list * current,
    if (fs == NULL)
    {
       /* Out of memory error */
+	  assert(0);
       return 1;
    }
 

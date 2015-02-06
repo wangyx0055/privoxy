@@ -612,57 +612,6 @@ int write_socket(jb_socket fd, const char *buf, size_t len)
 
 /*********************************************************************
  *
- * Function    :  read_socket
- *
- * Description :  Read from a TCP/IP socket in a platform independent way.
- *
- * Parameters  :
- *          1  :  fd = file descriptor of the socket to read
- *          2  :  buf = pointer to buffer where data will be written
- *                Must be >= len bytes long.
- *          3  :  len = maximum number of bytes to read
- *
- * Returns     :  On success, the number of bytes read is returned (zero
- *                indicates end of file), and the file position is advanced
- *                by this number.  It is not an error if this number is
- *                smaller than the number of bytes requested; this may hap-
- *                pen for example because fewer bytes are actually available
- *                right now (maybe because we were close to end-of-file, or
- *                because we are reading from a pipe, or from a terminal,
- *                or because read() was interrupted by a signal).  On error,
- *                -1 is returned, and errno is set appropriately.  In this
- *                case it is left unspecified whether the file position (if
- *                any) changes.
- *
- *********************************************************************/
-int read_socket(jb_socket fd, char *buf, int len)
-{
-   int ret;
-
-   if (len <= 0)
-   {
-      return(0);
-   }
-
-#if defined(_WIN32)
-   ret = recv(fd, buf, len, 0);
-#elif defined(__BEOS__) || defined(AMIGA) || defined(__OS2__)
-   ret = recv(fd, buf, (size_t)len, 0);
-#else
-   ret = (int)read(fd, buf, (size_t)len);
-#endif
-
-   if (ret > 0)
-   {
-      log_error(LOG_LEVEL_RECEIVED, "from socket %d: %N", fd, ret, buf);
-   }
-
-   return ret;
-}
-
-
-/*********************************************************************
- *
  * Function    :  data_is_available
  *
  * Description :  Waits for data to arrive on a socket.
@@ -711,6 +660,64 @@ int data_is_available(jb_socket fd, int seconds_to_wait)
 
    return ((n == 1) && (1 == r));
 }
+
+/*********************************************************************
+ *
+ * Function    :  read_socket
+ *
+ * Description :  Read from a TCP/IP socket in a platform independent way.
+ *
+ * Parameters  :
+ *          1  :  fd = file descriptor of the socket to read
+ *          2  :  buf = pointer to buffer where data will be written
+ *                Must be >= len bytes long.
+ *          3  :  len = maximum number of bytes to read
+ *
+ * Returns     :  On success, the number of bytes read is returned (zero
+ *                indicates end of file), and the file position is advanced
+ *                by this number.  It is not an error if this number is
+ *                smaller than the number of bytes requested; this may hap-
+ *                pen for example because fewer bytes are actually available
+ *                right now (maybe because we were close to end-of-file, or
+ *                because we are reading from a pipe, or from a terminal,
+ *                or because read() was interrupted by a signal).  On error,
+ *                -1 is returned, and errno is set appropriately.  In this
+ *                case it is left unspecified whether the file position (if
+ *                any) changes.
+ *
+ *********************************************************************/
+int read_socket(jb_socket fd, char *buf, int len)
+{
+   int ret = 0;
+
+   if (len <= 0)
+   {
+      return(0);
+   }
+   if(!data_is_available(fd, 30))
+   {
+       log_error(LOG_LEVEL_CONNECT,
+          "connection timeout : fd=%d",  fd);
+	   return 0;
+   }
+
+#if defined(_WIN32)
+   ret = recv(fd, buf, len, 0);
+#elif defined(__BEOS__) || defined(AMIGA) || defined(__OS2__)
+   ret = recv(fd, buf, (size_t)len, 0);
+#else
+   ret = (int)read(fd, buf, (size_t)len);
+#endif
+
+/*******************************/
+   if (ret > 0)
+   {
+      log_error(LOG_LEVEL_RECEIVED, "from socket %d: %N", fd, ret, buf);
+   }
+
+   return ret;
+}
+
 
 
 /*********************************************************************

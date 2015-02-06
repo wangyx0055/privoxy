@@ -429,8 +429,10 @@ struct configuration_spec * load_config(void)
    }
    if (NULL == fs)
    {
+	  assert(0);
       log_error(LOG_LEVEL_FATAL,
          "can't check configuration file '%s':  %E", configfile);
+
       return NULL;
    }
 
@@ -449,6 +451,7 @@ struct configuration_spec * load_config(void)
    {
       freez(fs->filename);
       freez(fs);
+      assert(0);
       log_error(LOG_LEVEL_FATAL, "can't allocate memory for configuration");
       return NULL;
    }
@@ -505,6 +508,7 @@ struct configuration_spec * load_config(void)
       log_error(LOG_LEVEL_FATAL,
          "can't open configuration file '%s':  %E", configfile);
       /* Never get here - LOG_LEVEL_FATAL causes program exit */
+      assert(0);
    }
 
    while (read_config_line(configfp, &linenum, &buf) != NULL)
