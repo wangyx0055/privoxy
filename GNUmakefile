@@ -103,8 +103,8 @@ INSTALL_R  = -m $(RWD_MODE)
 # Build tools
 #############################################################################
 
-#PROGRAM    = privoxy_test.exe
-PROGRAM    = privoxy.exe
+PROGRAM    = privoxy_test.exe
+#PROGRAM    = privoxy.exe
 CC         = gcc
 ECHO       = echo
 GZIP_PROG  = gzip
@@ -238,14 +238,16 @@ LIBS         = -lws2_32  -lz $(W32_LIB) $(SOCKET_LIB) $(PTHREAD_LIB)
 # The flag "-pthread" is required if using Pthreads under Linux (and
 # possibly other OSs).
 #SPECIAL_CFLAGS = -mwindows -mmovbe -msse4.2 -march=core2 -mtune=core2 -mcx16
-SPECIAL_CFLAGS = -mwindows -maes -mmovbe -mavx -msse4.2 -march=corei7-avx -mtune=corei7-avx -mcx16
+#SPECIAL_CFLAGS = -mwindows -maes -mmovbe -mavx -msse4.2 -march=corei7-avx -mtune=corei7-avx -mcx16
+SPECIAL_CFLAGS = -mwindows
 
 # Add your flags here
 OTHER_CFLAGS =
 
-CFLAGS = -pipe -O2 -DWINVER=0x501 -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -D_LARGEFILE_SOURCE=1  $(OTHER_CFLAGS) $(SPECIAL_CFLAGS) -Wall \
+#CFLAGS = -pipe -O2 -DWINVER=0x501 -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -D_LARGEFILE_SOURCE=1  $(OTHER_CFLAGS) $(SPECIAL_CFLAGS) -Wall \
+#          -Ipcre
+CFLAGS = -pipe -g -DWINVER=0x501 -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES -D_LARGEFILE_SOURCE=1  $(OTHER_CFLAGS) $(SPECIAL_CFLAGS) -Wall \
           -Ipcre
-
 LDFLAGS =  $(DEBUG_CFLAGS) $(SPECIAL_CFLAGS)
 
 
