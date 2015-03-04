@@ -612,57 +612,6 @@ int write_socket(jb_socket fd, const char *buf, size_t len)
 
 /*********************************************************************
  *
- * Function    :  data_is_available
- *
- * Description :  Waits for data to arrive on a socket.
- *
- * Parameters  :
- *          1  :  fd = file descriptor of the socket to read
- *          2  :  seconds_to_wait = number of seconds after which we give up.
- *
- * Returns     :  TRUE if data arrived in time,
- *                FALSE otherwise.
- *
- *********************************************************************/
-int data_is_available(jb_socket fd, int seconds_to_wait)
-{
-   char buf[10];
-   fd_set rfds;
-   struct timeval timeout;
-   int n;
-   int r;
-
-   memset(&timeout, 0, sizeof(timeout));
-   timeout.tv_sec = seconds_to_wait;
-
-#ifdef __OS2__
-   /* Copy and pasted from jcc.c ... */
-   memset(&rfds, 0, sizeof(fd_set));
-#else
-   FD_ZERO(&rfds);
-#endif
-   FD_SET(fd, &rfds);
-
-   n = select(fd+1, &rfds, NULL, NULL, &timeout);
-   if(n!=1)
-       log_error(LOG_LEVEL_CONNECT,
-          "cannot select , select = %d ,time = %d , socket %d", n,seconds_to_wait, fd);
-
-   r = recv(fd, buf, 1, MSG_PEEK);
-
-   if(r!=1)
-       log_error(LOG_LEVEL_CONNECT,
-          "cannot peek , recv = %d (%E), socket %d", r, fd);
-
-   /*
-    * XXX: Do we care about the different error conditions?
-    */
-
-   return ((n == 1) && (1 == r));
-}
-
-/*********************************************************************
- *
  * Function    :  read_socket
  *
  * Description :  Read from a TCP/IP socket in a platform independent way.
@@ -688,17 +637,11 @@ int data_is_available(jb_socket fd, int seconds_to_wait)
  *********************************************************************/
 int read_socket(jb_socket fd, char *buf, int len)
 {
-   int ret = 0;
+   int ret;
 
    if (len <= 0)
    {
       return(0);
-   }
-   if(!data_is_available(fd, 30))
-   {
-       log_error(LOG_LEVEL_CONNECT,
-          "connection timeout : fd=%d",  fd);
-	   return 0;
    }
 
 #if defined(_WIN32)
@@ -709,7 +652,6 @@ int read_socket(jb_socket fd, char *buf, int len)
    ret = (int)read(fd, buf, (size_t)len);
 #endif
 
-/*******************************/
    if (ret > 0)
    {
       log_error(LOG_LEVEL_RECEIVED, "from socket %d: %N", fd, ret, buf);
@@ -718,6 +660,46 @@ int read_socket(jb_socket fd, char *buf, int len)
    return ret;
 }
 
+
+/*********************************************************************
+ *
+ * Function    :  data_is_available
+ *
+ * Description :  Waits for data to arrive on a socket.
+ *
+ * Parameters  :
+ *          1  :  fd = file descriptor of the socket to read
+ *          2  :  seconds_to_wait = number of seconds after which we give up.
+ *
+ * Returns     :  TRUE if data arrived in time,
+ *                FALSE otherwise.
+ *
+ *********************************************************************/
+int data_is_available(jb_socket fd, int seconds_to_wait)
+{
+   char buf[10];
+   fd_set rfds;
+   struct timeval timeout;
+   int n;
+
+   memset(&timeout, 0, sizeof(timeout));
+   timeout.tv_sec = seconds_to_wait;
+
+#ifdef __OS2__
+   /* Copy and pasted from jcc.c ... */
+   memset(&rfds, 0, sizeof(fd_set));
+#else
+   FD_ZERO(&rfds);
+#endif
+   FD_SET(fd, &rfds);
+
+   n = select(fd+1, &rfds, NULL, NULL, &timeout);
+
+   /*
+    * XXX: Do we care about the different error conditions?
+    */
+   return ((n == 1) && (1 == recv(fd, buf, 1, MSG_PEEK)));
+}
 
 
 /*********************************************************************
